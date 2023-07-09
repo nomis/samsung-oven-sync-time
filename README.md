@@ -1,6 +1,6 @@
 # Setup
 
-Get a [personal access token](https://account.smartthings.com/tokens) to "Manage all devices"
+Get a [personal access token](https://account.smartthings.com/tokens) to "Control all devices"
 
 Put this in a file `~/.config/@smartthings/headers`:
 ```
