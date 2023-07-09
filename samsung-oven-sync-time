@@ -1,0 +1,80 @@
+#!/bin/bash
+# Copyright 2023  Simon Arlott
+#
+# This program is free software: you can redistribute it and/or modify
+# it under the terms of the GNU General Public License as published by
+# the Free Software Foundation, either version 3 of the License, or
+# (at your option) any later version.
+#
+# This program is distributed in the hope that it will be useful,
+# but WITHOUT ANY WARRANTY; without even the implied warranty of
+# MERCHANTABILITY or FITNESS FOR A PARTICULAR PURPOSE.  See the
+# GNU General Public License for more details.
+#
+# You should have received a copy of the GNU General Public License
+# along with this program.  If not, see <https://www.gnu.org/licenses/>.
+
+# Change this if you make a fork
+USER_AGENT="github.com/nomis/samsung-oven-sync-time"
+
+if [ "$1" = "--cron" ]; then
+	shift
+	# Run some time in the next 2 hours, but not right at the start or end of the minute
+	sleep $(($RANDOM % 120 * 60))
+	sleep $(($RANDOM % 50 + 5))
+fi
+
+DEVICE="$1"
+if [ -z "$DEVICE" ]; then
+	echo "Usage: $0 --cron <device>"
+	exit 1
+fi
+
+CONFIG="${HOME}/.config/@smartthings/headers"
+if [ ! -e "$CONFIG" ]; then
+	echo "Create $CONFIG containing:"
+	echo "Authorization: Bearer <personal access token with x:devices:* permission>"
+	exit 1
+fi
+
+# Capture both stdout and stderr in Bash:
+# https://stackoverflow.com/a/26827443 by https://stackoverflow.com/users/1815797/gniourf-gniourf
+# Creative Commons Attribution-ShareAlike 4.0 (https://creativecommons.org/licenses/by-sa/4.0/)
+
+# Ensure communication is in near real-time by making a request that must be executed on the oven
+. <({ berr=$({ bout=$(curl \
+	"https://api.smartthings.com/v1/devices/${DEVICE}/commands" \
+	-v --no-progress-meter \
+	-A "${USER_AGENT}" \
+	-H "@${CONFIG}" \
+	--header "Content-Type: application/json" \
+	--data '{"commands":[{"component":"main","capability":"execute","command":"execute","arguments":["/configuration/vs/0",{}]}]}' \
+	); bret=$?; } 2>&1; declare -p bout bret >&2); declare -p berr; } 2>&1)
+
+if [[ "$bret" -ne 0 ]] || [[ "$bout" =~ \"results\":.*\"status\":\"COMPLETED\" ]]; then
+	echo "Pre-request: $bout"
+else
+	echo "$berr"
+	echo "$bout"
+	exit 1
+fi
+
+# Set time
+. <({ berr=$({ bout=$(curl \
+	"https://api.smartthings.com/v1/devices/${DEVICE}/commands" \
+	-v --no-progress-meter \
+	-A "${USER_AGENT}" \
+	-H "@${CONFIG}" \
+	--header "Content-Type: application/json" \
+	--data '{"commands":[{"component":"main","capability":"execute","command":"execute","arguments":["/configuration/vs/0",{"x.com.samsung.da.currentTime":"'$(date +%Y-%m-%dT%H:%M:%S)'"}]}]}' \
+	); bret=$?; } 2>&1; declare -p bout bret >&2); declare -p berr; } 2>&1)
+
+if [[ "$bret" -ne 0 ]] || [[ "$bout" =~ \"results\":.*\"status\":\"COMPLETED\" ]]; then
+	echo "Set time: $bout"
+else
+	echo "$berr"
+	echo "$bout"
+	exit 1
+fi
+
+exit 0
