@@ -56,10 +56,12 @@ if [[ "$bret" -ne 0 ]] || [[ "$bout" =~ \"results\":.*\"status\":\"COMPLETED\" ]
 else
 	echo "$berr"
 	echo "$bout"
+	logger -t "$(basename "$0")" -- "Prepare error: $bout"
 	exit 1
 fi
 
 # Set time
+logger -t "$(basename "$0")" -- "Setting oven time"
 . <({ berr=$({ bout=$(curl \
 	"https://api.smartthings.com/v1/devices/${DEVICE}/commands" \
 	-v --no-progress-meter \
@@ -71,9 +73,11 @@ fi
 
 if [[ "$bret" -ne 0 ]] || [[ "$bout" =~ \"results\":.*\"status\":\"COMPLETED\" ]]; then
 	echo "Set time: $bout"
+	logger -t "$(basename "$0")" -- "Oven time set: $bout"
 else
 	echo "$berr"
 	echo "$bout"
+	logger -t "$(basename "$0")" -- "Set time error: $bout"
 	exit 1
 fi
 
