@@ -61,6 +61,7 @@ else
 fi
 
 # Set time
+NOW="$(date +%Y-%m-%dT%H:%M:%S)"
 logger -t "$(basename "$0")" -- "Setting oven time"
 . <({ berr=$({ bout=$(curl \
 	"https://api.smartthings.com/v1/devices/${DEVICE}/commands" \
@@ -68,12 +69,12 @@ logger -t "$(basename "$0")" -- "Setting oven time"
 	-A "${USER_AGENT}" \
 	-H "@${CONFIG}" \
 	--header "Content-Type: application/json" \
-	--data '{"commands":[{"component":"main","capability":"execute","command":"execute","arguments":["/configuration/vs/0",{"x.com.samsung.da.currentTime":"'$(date +%Y-%m-%dT%H:%M:%S)'"}]}]}' \
+	--data '{"commands":[{"component":"main","capability":"execute","command":"execute","arguments":["/configuration/vs/0",{"x.com.samsung.da.currentTime":"'"$NOW"'"}]}]}' \
 	); bret=$?; } 2>&1; declare -p bout bret >&2); declare -p berr; } 2>&1)
 
 if [[ "$bret" -ne 0 ]] || [[ "$bout" =~ \"results\":.*\"status\":\"COMPLETED\" ]]; then
-	echo "Set time: $bout"
-	logger -t "$(basename "$0")" -- "Oven time set: $bout"
+	echo "Set time ($NOW): $bout"
+	logger -t "$(basename "$0")" -- "Oven time set ($NOW): $bout"
 else
 	echo "$berr"
 	echo "$bout"
